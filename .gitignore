@@ -1,4 +1,6 @@
+# Custom files
 transactions.txt
+*.pickle
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
