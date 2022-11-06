@@ -1,6 +1,7 @@
 # Custom files
-transactions.txt
+*transactions.txt
 *.pickle
+airflow-dags/logs/*
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
