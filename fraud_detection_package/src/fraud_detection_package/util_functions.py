@@ -1,5 +1,4 @@
-import pandas as pd, matplotlib.pyplot as plt, re, os, numpy as np, joblib
-from zipfile import ZipFile
+import pandas as pd, matplotlib.pyplot as plt, re, os, numpy as np, joblib, fs_gcsfs
 from sklearn.preprocessing import OrdinalEncoder, MinMaxScaler
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import train_test_split, GridSearchCV, StratifiedKFold
@@ -7,28 +6,30 @@ from sklearn.metrics import confusion_matrix, accuracy_score, precision_score, r
 from google.cloud import storage
 
 
-def read_zip_file_as_df(dir_name, zipfile_name, tgt_filename, verbose=True):
-    """Reads the `tgt_filename` as a pandas df if already exists, otherwise attempts to unzip it first.
+def read_src_file_as_df(dir_name, src_filename, verbose=True):
+    """Reads the `src_filename` as a pandas df if already exists, otherwise attempts to unzip it first.
 
     Args:
         dir_name (str): Source Directory name
-        zipfile_name (str): Source Zipfile name
-        tgt_filename (str): Target file name.
+        src_filename (str): Target file name.
         verbose (bool, optional): Flag to indicate logging in verbose mode. Defaults to True.
 
     Returns:
         pd.DataFrame
     """
-    abs_zipfilename = dir_name + zipfile_name
-    abs_tgtfilename = dir_name + tgt_filename
+    abs_srcfilename = dir_name + src_filename
+    if verbose:  print(f'Trying to read {abs_srcfilename}')
 
-    if not os.path.exists(abs_tgtfilename):
-        if verbose:  print(f'Trying to extract {abs_zipfilename}')
-        with ZipFile(abs_zipfilename, 'r') as zip_ref:
-            zip_ref.extractall(dir_name)
+    # fs = gcsfs.GCSFileSystem(project='I535-Final-Project')
+    # with fs.open(abs_srcfilename) as f:
+    #     # df = pd.read_csv(f)
+    #     lines = f.readlines()
+    #     print(lines)
+    #     df = pd.read_json(f, lines=True)
     
-    df = pd.read_json(abs_tgtfilename, lines=True)
+    df = pd.read_json(abs_srcfilename, lines=True)
     if verbose:  print(df.info())
+    
     return df
 
 

@@ -1,4 +1,0 @@
-scikit-learn==1.0.2
-pandas==1.4.2
-zipfile
-google.cloud
