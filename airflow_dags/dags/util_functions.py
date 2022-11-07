@@ -4,6 +4,7 @@ from sklearn.preprocessing import OrdinalEncoder, MinMaxScaler
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import train_test_split, GridSearchCV, StratifiedKFold
 from sklearn.metrics import confusion_matrix, accuracy_score, precision_score, recall_score, f1_score
+from google.cloud import storage
 
 
 def read_zip_file_as_df(dir_name, zipfile_name, tgt_filename, verbose=True):
@@ -29,6 +30,23 @@ def read_zip_file_as_df(dir_name, zipfile_name, tgt_filename, verbose=True):
     df = pd.read_json(abs_tgtfilename, lines=True)
     if verbose:  print(df.info())
     return df
+
+
+
+def write_data_to_cloud_storage(df, bucket_name='my-bucket-name', tgt_filename='abs-file-path', verbose=True):
+    """Write dataframe to remote storage on GCP.
+
+    Args:
+        df (pd.DataFrame): Input dataframe.
+        bucket_name (str, optional): Google-Cloud-Storage bucket name. Defaults to 'my-bucket-name'.
+        tgt_filename (str, optional): Absolute file path for target location. Defaults to 'abs-file-path'.
+        verbose (bool, optional): Flag to indicate logging in verbose mode. Defaults to False.
+    """
+    client = storage.Client()
+    bucket = client.get_bucket(bucket_name)
+    if verbose:  print(f'Uploading df={df.shape} into {bucket_name}/{tgt_filename}')
+    bucket.blob(tgt_filename).upload_from_string(df.to_csv(), 'text/csv')
+
 
 
 

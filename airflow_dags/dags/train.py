@@ -1,17 +1,17 @@
 import pandas as pd
 
 from sklearn.model_selection import train_test_split
-from utils.util_functions import read_zip_file_as_df, levenshtein_distance, add_time_dependent_features, drop_unary_columns, impute_transactionType
-from utils.util_functions import get_reversals_report, get_multiswipe_transactions, display_class_imbalance, convert_boolean_to_int
-from utils.util_functions import encode_categorical_cols, drop_irrelevant_columns, scaledown_numerical_cols, print_neat_metrics
-from utils.util_functions import train_random_forest_classifier
+from util_functions import read_zip_file_as_df, levenshtein_distance, add_time_dependent_features, drop_unary_columns, impute_transactionType
+from util_functions import get_reversals_report, get_multiswipe_transactions, display_class_imbalance, convert_boolean_to_int
+from util_functions import encode_categorical_cols, drop_irrelevant_columns, scaledown_numerical_cols, print_neat_metrics
+from util_functions import train_random_forest_classifier
 
-from config_params.config import SRC_DIR_NAME, TGT_FILE_NAME, SRC_ZIP_FILE, MODEL_PATH, PARAM_GRID, TGT_DIR_NAME
+from config import SRC_DIR_NAME, TGT_FILE_NAME, SRC_ZIP_FILE, MODEL_PATH, PARAM_GRID, TGT_DIR_NAME
 
 
 def run_train_pipeline():
     df = read_zip_file_as_df(dir_name=SRC_DIR_NAME, zipfile_name=SRC_ZIP_FILE, tgt_filename=TGT_FILE_NAME)
-
+    print(f'Successfully read the remote text file and created a dataframe of shape df={df.shape}')
 
     # Engineer date-time features from the input datetime column and drop the original column
     df['transactionDt'] = pd.to_datetime(df['transactionDateTime'])
