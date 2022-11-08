@@ -58,7 +58,7 @@ with dag:
             'gcsfs',
             'fsspec',
             'matplotlib==3.5.1', 
-            'fraud-detection-package-new==0.0.6'
+            'fraud-detection-package-new==0.0.8'
             ],
         system_site_packages = False,
     )

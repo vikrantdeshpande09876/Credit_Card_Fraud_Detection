@@ -120,10 +120,10 @@ def drop_unary_columns(df, verbose=False):
         verbose (bool, optional): Flag to indicate logging in verbose mode. Defaults to False.
 
     Returns:
-        pd.DataFrame: Dataframe with dropped out columns that contained only 1 value.
+        pd.DataFrame: Dataframe with dropped out columns that contained only <=1 value.
     """
     nvalue_counts_df = df.nunique()
-    columns_to_drop = nvalue_counts_df.index[nvalue_counts_df.values==1]
+    columns_to_drop = nvalue_counts_df.index[nvalue_counts_df.values<=1]
     if verbose:  print(f'Columns that will be dropped: {columns_to_drop.values}')
     return df.drop(labels=columns_to_drop, axis=1)
 
@@ -308,6 +308,10 @@ def drop_irrelevant_columns(main_df, verbose=True):
     Returns:
         pd.DataFrame: Dataframe containing ready-to-use feature columns.
     """
+    for c in main_df.columns:
+        mode = main_df[c].mode().values[0]
+        main_df[c] = main_df[c].fillna(value=mode)
+    if verbose:  print('Imputed NaN values with mode of each column.')
     cols_to_drop = list(main_df.select_dtypes(exclude=['int64','float64','int32']).columns)
     if verbose:  print(f'Dropping {cols_to_drop}')
     return main_df.drop(cols_to_drop, axis=1)
@@ -370,7 +374,7 @@ def encode_categorical_cols(main_df, model_path=None, verbose=True):
     main_df[c] = categorical_cols_encoders[c].transform(main_df[c].values.reshape(-1,1))
 
     if model_path:
-        if verbose:  print(f'Caching the scaling-transformation objects at: {abs_model_path}...')
+        if verbose:  print(f'Caching the encoding-transformation objects at: {abs_model_path}...')
         # joblib.dump(categorical_cols_encoders, abs_model_path)
         cache_pickle_object_to_gcs(categorical_cols_encoders, tgt_abs_path=abs_model_path)
 
