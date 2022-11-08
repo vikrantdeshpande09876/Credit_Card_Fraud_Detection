@@ -1,4 +1,4 @@
-import pandas as pd, matplotlib.pyplot as plt, re, os, numpy as np, joblib, fs_gcsfs
+import pandas as pd, matplotlib.pyplot as plt, re, os, numpy as np, joblib, gcsfs
 from sklearn.preprocessing import OrdinalEncoder, MinMaxScaler
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import train_test_split, GridSearchCV, StratifiedKFold
@@ -7,7 +7,7 @@ from google.cloud import storage
 
 
 def read_src_file_as_df(dir_name, src_filename, verbose=True):
-    """Reads the `src_filename` as a pandas df if already exists, otherwise attempts to unzip it first.
+    """Reads the `src_filename` as a pandas df if exists on GCS storage.
 
     Args:
         dir_name (str): Source Directory name
@@ -19,15 +19,14 @@ def read_src_file_as_df(dir_name, src_filename, verbose=True):
     """
     abs_srcfilename = dir_name + src_filename
     if verbose:  print(f'Trying to read {abs_srcfilename}')
-
+    
     # fs = gcsfs.GCSFileSystem(project='I535-Final-Project')
     # with fs.open(abs_srcfilename) as f:
-    #     # df = pd.read_csv(f)
     #     lines = f.readlines()
-    #     print(lines)
+    #     print(f'lines={lines}')
     #     df = pd.read_json(f, lines=True)
-    
-    df = pd.read_json(abs_srcfilename, lines=True)
+    # df = pd.read_json(abs_srcfilename, lines=True)
+    df = pd.read_csv(abs_srcfilename)
     if verbose:  print(df.info())
     
     return df
@@ -255,57 +254,46 @@ def convert_boolean_to_int(main_df, verbose=True):
 
 
 
-
-# Cleans the merchant-name string
-get_clean_merchant_name = lambda name: re.sub(r' #.*', '', name).replace('.com', '')
-	
-	
-def encode_categorical_cols(main_df, model_path=None, verbose=True):
-    """Encodes the categorical columns using Ordinal encoding.
-    Applies custom ordinal encoder for `merchantName` since it has >30 basenames, even after cleaning the strings.
-    Using ordinal encoder rather than one-hot-encoding since even a 5-valued categorical feature requires 55GB!
+def cache_pickle_object_to_gcs(model, project_name='I535-Final-Project', tgt_abs_path='bucketname/modelname.pickle', verbose=True):
+    """Opens a connection with Google-Cloud-Storage and writes the Python model-object as a pickle-file.
 
     Args:
-        main_df (pd.DataFrame): Input Dataframe of features.
+        model (Any): Can be a dictionary/sklearn-model/Tensorflow-model/etc.
+        project_name (str, optional): Google Cloud Project-name. Defaults to 'I535-Final-Project'.
+        tgt_abs_path (str, optional): Absolute path of the destination pickle file. Defaults to 'bucketname/modelname.pickle'.
+        verbose (bool, optional): Flag to indicate logging in verbose mode. Defaults to True.
+    """
+    fs = gcsfs.GCSFileSystem(project=project_name)
+    if verbose:  print(f'Connected with GCSFS: Trying to write the input model to {tgt_abs_path}')
+    with fs.open(tgt_abs_path, 'wb') as file:
+        joblib.dump(model, file)
+    if verbose:  print(f'Successfully cached input model to {tgt_abs_path}')
+
+
+
+def retrieve_cached_model(project_name='I535-Final-Project', tgt_abs_path='bucketname/modelname.pickle', verbose=True):
+    """Opens a connection with Google-Cloud-Storage and retrieves the pickle-object if it exists.
+
+    Args:
+        project_name (str, optional): Google Cloud Project-name. Defaults to 'I535-Final-Project'.
+        tgt_abs_path (str, optional): Absolutie path of the source pickle file. Defaults to 'bucketname/modelname.pickle'.
+        verbose (bool, optional): Flag to indicate logging in verbose mode. Defaults to True.
 
     Returns:
-        pd.DataFrame, dict: Final dataframe with ordinal encodings for categorical features, and the encoding-transformers used for each column.
+        Any: Can be a dictionary/sklearn-model/Tensorflow-model/etc. depending on the remote pickle-object.
     """
-    categorical_cols = set(main_df.select_dtypes(include='object').columns)
-    categorical_cols -= set(['transactionDateTime', 'accountOpenDate', 'dateOfLastAddressChange', 'currentExpDate'])
+    newmodel = None
+    try:
+        fs = gcsfs.GCSFileSystem(project=project_name)
+        if verbose:  print(f'Connected with GCSFS: Trying to fetch model at {tgt_abs_path}')
+        with fs.open(tgt_abs_path, 'rb') as f:
+            newmodel = joblib.load(f)
+            print(newmodel)
+        if verbose:  print(f'Successfully retrieved cached model at {tgt_abs_path}')
+    except Exception as e:
+        print(f'Something went wrong. Are you sure the model-pickle file exists at {tgt_abs_path}?: {e}')
+    return newmodel
 
-    abs_model_path = f'{model_path}/categorical_cols_encoders.pickle'
-    if model_path and os.path.exists(abs_model_path):
-        if verbose:  print(f'Using the MinMaxScaler() objects available in the pickle file at: {abs_model_path}')
-        categorical_cols_encoders = joblib.load(abs_model_path)
-    else:
-        categorical_cols_encoders = {c : None for c in categorical_cols}
-    
-
-    nvalues_categorical_df = main_df[categorical_cols].nunique()
-    cols_to_encode = list(nvalues_categorical_df.index[nvalues_categorical_df.values<=20])
-    for c in cols_to_encode[::-1]:
-        if verbose:  print(f'Ordinal-encoding {c} instead of OHE...')
-        if not categorical_cols_encoders[c]:
-            if verbose:  print(f'Not using one-hot-encoding for "{c}" since even a 5-valued categorical feature requires 55GB!')
-            categorical_cols_encoders[c] = OrdinalEncoder().fit(main_df[c].values.reshape(-1,1))
-        main_df[c] = categorical_cols_encoders[c].transform(main_df[c].values.reshape(-1,1))
-
-
-    # Cleaning the 'Merchant name' column first to reduce 2,400 categories into 200 categories
-    c = 'merchantName'
-    if verbose:  print(f'Ordinal-encoding {c} instead of OHE...')
-    main_df[c] = main_df[c].apply(get_clean_merchant_name)
-    if not categorical_cols_encoders[c]:
-        if verbose:  print(f'Not using one-hot-encoding for "{c}" since even a 5-valued categorical feature requires 55GB!')
-        categorical_cols_encoders[c] = OrdinalEncoder().fit(main_df[c].values.reshape(-1,1))
-    main_df[c] = categorical_cols_encoders[c].transform(main_df[c].values.reshape(-1,1))
-
-    if model_path and not os.path.exists(abs_model_path):
-        if verbose:  print(f'Caching the scaling-transformation objects at: {abs_model_path}...')
-        joblib.dump(categorical_cols_encoders, abs_model_path)
-
-    return main_df, categorical_cols_encoders
 
 
 
@@ -328,6 +316,71 @@ def drop_irrelevant_columns(main_df, verbose=True):
 
 
 
+
+# Cleans the merchant-name string
+get_clean_merchant_name = lambda name: re.sub(r' #.*', '', name).replace('.com', '')
+	
+	
+def encode_categorical_cols(main_df, model_path=None, verbose=True):
+    """Encodes the categorical columns using Ordinal encoding.
+    Applies custom ordinal encoder for `merchantName` since it has >30 basenames, even after cleaning the strings.
+    Using ordinal encoder rather than one-hot-encoding since even a 5-valued categorical feature requires 55GB!
+
+    Args:
+        main_df (pd.DataFrame): Input Dataframe of features.
+
+    Returns:
+        pd.DataFrame, dict: Final dataframe with ordinal encodings for categorical features, and the encoding-transformers used for each column.
+    """
+    categorical_cols = set(main_df.select_dtypes(include='object').columns)
+    categorical_cols -= set(['transactionDateTime', 'accountOpenDate', 'dateOfLastAddressChange', 'currentExpDate'])
+
+    pickle_filename = 'categorical_cols_encoders.pickle'
+    abs_model_path = model_path + pickle_filename
+    categorical_cols_encoders = None
+
+    # if model_path and os.path.exists(abs_model_path):
+    #     if verbose:  print(f'Using the MinMaxScaler() objects available in the pickle file at: {abs_model_path}')
+    #     categorical_cols_encoders = joblib.load(abs_model_path)
+    
+    if model_path:
+        categorical_cols_encoders = retrieve_cached_model(project_name='I535-Final-Project', tgt_abs_path=abs_model_path, verbose=True)
+        
+    if not categorical_cols_encoders:
+        categorical_cols_encoders = {c : None for c in categorical_cols}
+    
+
+    nvalues_categorical_df = main_df[categorical_cols].nunique()
+    cols_to_encode = list(nvalues_categorical_df.index[nvalues_categorical_df.values<=20])
+    for c in cols_to_encode[::-1]:
+        if verbose:  print(f'Ordinal-encoding {c} instead of OHE...')
+        if not categorical_cols_encoders[c]:
+            if verbose:  print(f'Not using one-hot-encoding for "{c}" since even a 5-valued categorical feature requires 55GB!')
+            categorical_cols_encoders[c] = OrdinalEncoder().fit(main_df[c].values.reshape(-1,1))
+        main_df[c] = categorical_cols_encoders[c].transform(main_df[c].values.reshape(-1,1))
+
+
+    # Cleaning the 'Merchant name' column first to reduce 2,400 categories into 200 categories
+    c = 'merchantName'
+    if verbose:  print(f'Ordinal-encoding {c} instead of OHE...')
+    main_df[c] = main_df[c].apply(get_clean_merchant_name)
+    if not categorical_cols_encoders[c]:
+        if verbose:  print(f'Not using one-hot-encoding for "{c}" since even a 5-valued categorical feature requires 55GB!')
+        categorical_cols_encoders[c] = OrdinalEncoder().fit(main_df[c].values.reshape(-1,1))
+    main_df[c] = categorical_cols_encoders[c].transform(main_df[c].values.reshape(-1,1))
+
+    if model_path:
+        if verbose:  print(f'Caching the scaling-transformation objects at: {abs_model_path}...')
+        # joblib.dump(categorical_cols_encoders, abs_model_path)
+        cache_pickle_object_to_gcs(categorical_cols_encoders, tgt_abs_path=abs_model_path)
+
+    return main_df, categorical_cols_encoders
+
+
+
+
+
+
 def scaledown_numerical_cols(main_df, numerical_cols=['creditLimit', 'availableMoney'], model_path=None, verbose=True):
     """Use MinMaxScaler for each of the input specified `numerical_columns`.
     If `model_path` specified and pickle file of the scalers already exists, then recreate the scaler transformation objects.
@@ -343,11 +396,23 @@ def scaledown_numerical_cols(main_df, numerical_cols=['creditLimit', 'availableM
     """
     abs_model_path = f'{model_path}/numerical_col_scalers.pickle'
     
-    if model_path and os.path.exists(abs_model_path):
-        if verbose:  print(f'Using the MinMaxScaler() objects available in the pickle file at: {abs_model_path}')
-        numerical_col_scalers = joblib.load(abs_model_path)
-    else:
+    # if model_path and os.path.exists(abs_model_path):
+    #     if verbose:  print(f'Using the MinMaxScaler() objects available in the pickle file at: {abs_model_path}')
+    #     numerical_col_scalers = joblib.load(abs_model_path)
+    # else:
+    #     numerical_col_scalers = {c : None for c in numerical_cols}
+
+
+    pickle_filename = 'numerical_col_scalers.pickle'
+    abs_model_path = model_path + pickle_filename
+    numerical_col_scalers = None
+
+    if model_path:
+        numerical_col_scalers = retrieve_cached_model(project_name='I535-Final-Project', tgt_abs_path=abs_model_path, verbose=True)
+        
+    if not numerical_col_scalers:
         numerical_col_scalers = {c : None for c in numerical_cols}
+    
 
     for c in numerical_cols:
         if verbose:  print(f'Scaling down column `{c}`...')
@@ -358,7 +423,8 @@ def scaledown_numerical_cols(main_df, numerical_cols=['creditLimit', 'availableM
 
     if model_path and not os.path.exists(abs_model_path):
         if verbose:  print(f'Caching the scaling-transformation objects at: {abs_model_path}...')
-        joblib.dump(numerical_col_scalers, abs_model_path)
+        # joblib.dump(numerical_col_scalers, abs_model_path)
+        cache_pickle_object_to_gcs(numerical_col_scalers, tgt_abs_path=abs_model_path)
     return main_df, numerical_col_scalers
 
 
@@ -404,11 +470,14 @@ def train_random_forest_classifier(train_features, train_labels, param_grid, mod
     Returns:
         GridSearchCV: Output of the GridSearchCV module.
     """
+    model_picklefile = 'random_forest_classifier.pickle'
+    abs_model_path = model_path + model_picklefile
     strat_kfold_cv = StratifiedKFold(n_splits=10, shuffle=True)
     random_forest = RandomForestClassifier()
     cv_output = GridSearchCV(random_forest, param_grid=param_grid, cv=strat_kfold_cv, verbose=1).fit(train_features, train_labels)
     if model_path:
-        joblib.dump(cv_output, f'{model_path}/random_forest_classifier.pickle')
+        # joblib.dump(cv_output, f'{model_path}/random_forest_classifier.pickle')
+        cache_pickle_object_to_gcs(cv_output, tgt_abs_path=abs_model_path)
     return cv_output
 
 
@@ -421,7 +490,10 @@ def predict_random_forest_classifier(test_features, model_path='models'):
         test_features (np.array): Numpy array of numerical test-features.
         model_path (str, optional): Path to read for retrieving the cached model. Defaults to 'models'.
     """
-    new_random_forest = joblib.load(f'{model_path}/random_forest_classifier.pickle')
+    # new_random_forest = joblib.load(f'{model_path}/random_forest_classifier.pickle')
+    model_picklefile = 'random_forest_classifier.pickle'
+    abs_model_path = model_path + model_picklefile
+    new_random_forest = retrieve_cached_model(tgt_abs_path=abs_model_path)
     preds = new_random_forest.predict(test_features)
     return preds
 

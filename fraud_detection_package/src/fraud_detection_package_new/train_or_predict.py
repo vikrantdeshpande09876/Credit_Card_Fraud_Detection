@@ -1,13 +1,13 @@
 import pandas as pd
 
 from sklearn.model_selection import train_test_split
-from fraud_detection_package.util_functions import read_src_file_as_df, levenshtein_distance, add_time_dependent_features, drop_unary_columns, impute_transactionType
-from fraud_detection_package.util_functions import get_reversals_report, get_multiswipe_transactions, display_class_imbalance, convert_boolean_to_int
-from fraud_detection_package.util_functions import encode_categorical_cols, drop_irrelevant_columns, scaledown_numerical_cols, print_neat_metrics
-from fraud_detection_package.util_functions import train_random_forest_classifier
+from fraud_detection_package_new.util_functions import read_src_file_as_df, levenshtein_distance, add_time_dependent_features, drop_unary_columns, impute_transactionType
+from fraud_detection_package_new.util_functions import get_reversals_report, get_multiswipe_transactions, display_class_imbalance, convert_boolean_to_int
+from fraud_detection_package_new.util_functions import encode_categorical_cols, drop_irrelevant_columns, scaledown_numerical_cols, print_neat_metrics
+from fraud_detection_package_new.util_functions import train_random_forest_classifier, predict_random_forest_classifier
 
 
-def run_train_pipeline(SRC_DIR_NAME, TGT_FILE_NAME, SRC_ZIP_FILE, MODEL_PATH, PARAM_GRID, TGT_DIR_NAME):
+def run_train_pipeline(SRC_DIR_NAME, TGT_FILE_NAME, MODEL_PATH, PARAM_GRID, TGT_DIR_NAME):
     
     df = read_src_file_as_df(dir_name=SRC_DIR_NAME, src_filename=TGT_FILE_NAME, verbose=True)
     print(f'Successfully read the remote text file and created a dataframe of shape df={df.shape}')
@@ -64,6 +64,12 @@ def run_train_pipeline(SRC_DIR_NAME, TGT_FILE_NAME, SRC_ZIP_FILE, MODEL_PATH, PA
     features = main_df[feature_cols]
     x_train, x_test, y_train, y_test = train_test_split(features, labels, test_size=0.1, stratify=labels)
 
+    print(f'x_train={x_train.info()}')
+    print(f'x_test={x_test.info()}')
+
+    print(f'y_train={y_train.info()}')
+    print(f'y_test={y_test.info()}')
+
     # Apply grid-search-cv for a random-forest-classifier and cache the model
     model = train_random_forest_classifier(x_train, y_train, param_grid=PARAM_GRID, model_path=MODEL_PATH)
 
@@ -76,8 +82,8 @@ def run_train_pipeline(SRC_DIR_NAME, TGT_FILE_NAME, SRC_ZIP_FILE, MODEL_PATH, PA
 
 
 
-def run_prediction_pipeline(SRC_DIR_NAME, TGT_FILE_NAME, SRC_ZIP_FILE, MODEL_PATH, TGT_DIR_NAME):
-    df = read_zip_file_as_df(dir_name=SRC_DIR_NAME, zipfile_name=SRC_ZIP_FILE, tgt_filename=f'Test_{TGT_FILE_NAME}')
+def run_prediction_pipeline(SRC_DIR_NAME, TGT_FILE_NAME, MODEL_PATH, TGT_DIR_NAME):
+    df = read_src_file_as_df(dir_name=SRC_DIR_NAME, src_filename=TGT_FILE_NAME, verbose=True)
     print(f'Successfully read the remote text file and created a dataframe of shape df={df.shape}')
 
     # Engineer date-time features from the input datetime column and drop the original column

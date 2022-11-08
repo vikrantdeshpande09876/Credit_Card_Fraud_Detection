@@ -21,14 +21,16 @@ dag = DAG(dag_id='model_training_dag', default_args={'owner':'vikrant', 'retries
 
 with dag:
     def run_train_function():
-        from fraud_detection_package.train_or_predict import run_train_pipeline
+        from fraud_detection_package_new.train_or_predict import run_train_pipeline
         print(f'Attempts to create a virtual-env')
     
         SRC_GCS_BUCKETNAME = 'gs://i535-credit-card-fraud-transactions-dir'
         SRC_DIR_NAME = f'{SRC_GCS_BUCKETNAME}/Data/'
-        SRC_ZIP_FILE = 'transactions.zip'
-        TGT_FILE_NAME = 'transactions.txt'
-        TGT_DIR_NAME = f'{SRC_GCS_BUCKETNAME}/outputs'
+        # SRC_ZIP_FILE = 'transactions.zip'
+        TGT_FILE_NAME = 'Train_transactions.csv'
+        TGT_DIR_NAME = f'{SRC_GCS_BUCKETNAME}/outputs/'
+        MODEL_PATH = f'{SRC_GCS_BUCKETNAME}/models/'
+
         CLASS_WEIGHTS = { 0: 2, 1: 98 }
         PARAM_GRID = {
             'n_estimators' : [400],
@@ -38,10 +40,9 @@ with dag:
             'n_jobs' : [-1],
             'class_weight' : [CLASS_WEIGHTS]
         }
-        MODEL_PATH = f'{SRC_GCS_BUCKETNAME}/models/'
 
-        print(SRC_DIR_NAME, TGT_FILE_NAME, SRC_ZIP_FILE, MODEL_PATH, PARAM_GRID, TGT_DIR_NAME)
-        run_train_pipeline(SRC_DIR_NAME, TGT_FILE_NAME, SRC_ZIP_FILE, MODEL_PATH, PARAM_GRID, TGT_DIR_NAME)
+        print(SRC_DIR_NAME, TGT_FILE_NAME, MODEL_PATH, PARAM_GRID, TGT_DIR_NAME)
+        run_train_pipeline(SRC_DIR_NAME, TGT_FILE_NAME, MODEL_PATH, PARAM_GRID, TGT_DIR_NAME)
     
     def run_data_ingestion_function():
         print('I am going to push your reports into the Google Big Table dataset.')
@@ -54,9 +55,10 @@ with dag:
             'google-cloud-storage', 
             'pandas==1.4.2',
             'fs-gcsfs',
+            'gcsfs',
             'fsspec',
             'matplotlib==3.5.1', 
-            'fraud-detection-package==0.2.2'
+            'fraud-detection-package-new==0.0.6'
             ],
         system_site_packages = False,
     )

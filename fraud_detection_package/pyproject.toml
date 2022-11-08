@@ -1,10 +1,10 @@
 [build-system]
-requires = ["setuptools>=61.0","scikit-learn==1.0.2","pandas==1.4.2", "google-cloud-storage", "fs-gcsfs", "matplotlib==3.5.1"]
+requires = ["setuptools>=61.0","scikit-learn==1.0.2","pandas==1.4.2", "google-cloud-storage", "gcsfs", "matplotlib==3.5.1"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "fraud_detection_package"
-version = "0.2.2"
+name = "fraud_detection_package_new"
+version = "0.0.6"
 authors = [
   { name="Vikrant Deshpande", email="vikdeshp@iu.edu" },
 ]
