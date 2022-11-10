@@ -9,7 +9,7 @@ dag = DAG(dag_id='model_prediction_dag', default_args={'owner':'vikrant', 'retri
 
 
 def run_predict_function():
-        from fraud_detection_package_new.train_or_predict import run_prediction_pipeline
+        from anonymized_fraud_detection.predict import run_prediction_pipeline
         print(f'Attempting to create a virtual-env')
     
         SRC_GCS_BUCKETNAME = 'gs://i535-credit-card-fraud-transactions-dir'
@@ -57,6 +57,27 @@ def run_data_ingestion_function():
                 print(f'Are you sure {TGT_DIR_NAME}{report}.csv exists?')
                 continue
 
+def run_file_archival_task():
+    import gcsfs
+
+    SRC_GCS_BUCKETNAME = 'gs://i535-credit-card-fraud-transactions-dir'
+    PROJECT_NAME = 'i535-Final-Project'
+    SRC_DIR_NAME = f'{SRC_GCS_BUCKETNAME}/Data/'
+    TGT_DIR_NAME = f'{SRC_GCS_BUCKETNAME}/Data/archive/'
+    fs = gcsfs.GCSFileSystem(project=PROJECT_NAME)
+    
+    FILE_NAMES = ['Test_transactions.txt']
+    for fname in FILE_NAMES:
+        abs_src_filename = f'{SRC_DIR_NAME}/{fname}'
+        abs_tgt_filename = f'{TGT_DIR_NAME}/{fname}'
+        try:
+            fs.mv(abs_src_filename, abs_tgt_filename)
+        except Exception as e:
+            print(f'Something went wrong while archiving the {abs_src_filename}.. {e}')
+            print(f'Are you sure {abs_src_filename} exists?')
+            continue
+
+
             
 
 
@@ -70,12 +91,11 @@ with dag:
             'scikit-learn==1.0.2', 
             'google-cloud-storage', 
             'pandas==1.4.2',
-            # 'fs-gcsfs',
             'pandas-gbq',
             'gcsfs',
             'fsspec',
             'matplotlib==3.5.1', 
-            'fraud-detection-package-new==0.1.1'
+            'anonymized-fraud-detection==0.0.1'
             ],
         system_site_packages = False,
     )
@@ -92,4 +112,14 @@ with dag:
         system_site_packages = False,
     )
 
-prediction_pipeline_task >> data_ingestion_task
+    file_archival_task = PythonVirtualenvOperator(
+        task_id = 'file_archival_task',
+        python_callable = run_file_archival_task,
+        requirements = [
+            'google-cloud-storage', 
+            'gcsfs'
+            ],
+        system_site_packages = False,
+    )
+
+prediction_pipeline_task >> data_ingestion_task >> file_archival_task

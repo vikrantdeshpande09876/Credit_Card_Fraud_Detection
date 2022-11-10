@@ -3,12 +3,12 @@ requires = ["setuptools>=61.0","scikit-learn==1.0.2","pandas==1.4.2", "google-cl
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "fraud_detection_package_new"
-version = "0.1.1"
+name = "anonymized_fraud_detection"
+version = "0.0.1"
 authors = [
   { name="Vikrant Deshpande", email="vikdeshp@iu.edu" },
 ]
-description = "A small package to parse and train an ML model. Will update the readme later"
+description = "A small package to parse and train an ML model for anonymized credit card transactions. Refer to github wikis for more details. Package was built for PythonVirtualenvOperator() on GCP Airflow."
 readme = "README.md"
 requires-python = ">=3.7"
 classifiers = [

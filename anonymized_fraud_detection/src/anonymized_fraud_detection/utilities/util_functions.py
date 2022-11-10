@@ -37,24 +37,6 @@ def read_src_file_as_df(dir_name, src_filename, verbose=True):
 
 
 
-def write_data_to_cloud_storage(df, bucket_name='my-bucket-name', tgt_filename='abs-file-path', verbose=True):
-    """Write dataframe to remote storage on GCP.
-
-    Args:
-        df (pd.DataFrame): Input dataframe.
-        bucket_name (str, optional): Google-Cloud-Storage bucket name. Defaults to 'my-bucket-name'.
-        tgt_filename (str, optional): Absolute file path for target location. Defaults to 'abs-file-path'.
-        verbose (bool, optional): Flag to indicate logging in verbose mode. Defaults to False.
-    """
-    client = storage.Client()
-    bucket = client.get_bucket(bucket_name)
-    if verbose:  print(f'Uploading df={df.shape} into {bucket_name}/{tgt_filename}')
-    bucket.blob(tgt_filename).upload_from_string(df.to_csv(), 'text/csv')
-
-
-
-
-
 def levenshtein_distance(s1, s2):
     """Computes the Levenshtein distance between 2 strings: Minimum no. of character substitutions/additions/removals.
 
@@ -340,8 +322,15 @@ def encode_categorical_cols(main_df, model_path=None, verbose=True):
     Returns:
         pd.DataFrame, dict: Final dataframe with ordinal encodings for categorical features, and the encoding-transformers used for each column.
     """
-    categorical_cols = set(main_df.select_dtypes(include='object').columns)
-    categorical_cols -= set(['transactionDateTime', 'accountOpenDate', 'dateOfLastAddressChange', 'currentExpDate'])
+    # categorical_cols = set(main_df.select_dtypes(include='object').columns)
+    # categorical_cols -= set(['transactionDateTime', 'accountOpenDate', 'dateOfLastAddressChange', 'currentExpDate'])
+    categorical_cols = [
+        'transactionType',
+        'merchantCategoryCode',
+        'merchantCountryCode',
+        'merchantName',
+        'acqCountry'
+    ]
 
     pickle_filename = 'categorical_cols_encoders.pickle'
     abs_model_path = model_path + pickle_filename
