@@ -5,43 +5,21 @@ from airflow.operators.python import PythonVirtualenvOperator
 
 
 
-def dummy_function():
-    import sys, os
-    PATHS = sys.path
-    print(f'PATHS={PATHS}')
-    for root, dirs, files in os.walk(".", topdown=False):
-        for name in files:
-            print(os.path.join(root, name))
-        for name in dirs:
-            print(os.path.join(root, name))
+dag = DAG(dag_id='model_prediction_dag', default_args={'owner':'vikrant', 'retries':0, 'start_date':days_ago(1)}, schedule_interval=None, )
 
 
-
-dag = DAG(dag_id='model_training_dag', default_args={'owner':'vikrant', 'retries':0, 'start_date':days_ago(1)}, schedule_interval=None, )
-
-
-def run_train_function():
-        from fraud_detection_package_new.train_or_predict import run_train_pipeline
+def run_predict_function():
+        from fraud_detection_package_new.train_or_predict import run_prediction_pipeline
         print(f'Attempting to create a virtual-env')
     
         SRC_GCS_BUCKETNAME = 'gs://i535-credit-card-fraud-transactions-dir'
         SRC_DIR_NAME = f'{SRC_GCS_BUCKETNAME}/Data/'
-        TGT_FILE_NAME = 'Train_transactions.csv'
+        TGT_FILE_NAME = 'Test_transactions.txt'
         TGT_DIR_NAME = f'{SRC_GCS_BUCKETNAME}/outputs/'
         MODEL_PATH = f'{SRC_GCS_BUCKETNAME}/models/'
 
-        CLASS_WEIGHTS = { 0: 2, 1: 98 }
-        PARAM_GRID = {
-            'n_estimators' : [100],
-            'max_depth' : [None],
-            'random_state' : [1],
-            'min_samples_split' : [4],
-            'n_jobs' : [-1],
-            'class_weight' : [CLASS_WEIGHTS]
-        }
-
-        print(SRC_DIR_NAME, TGT_FILE_NAME, MODEL_PATH, PARAM_GRID, TGT_DIR_NAME)
-        run_train_pipeline(SRC_DIR_NAME, TGT_FILE_NAME, MODEL_PATH, PARAM_GRID, TGT_DIR_NAME)
+        print(SRC_DIR_NAME, TGT_FILE_NAME, MODEL_PATH, TGT_DIR_NAME)
+        run_prediction_pipeline(SRC_DIR_NAME, TGT_FILE_NAME, MODEL_PATH, TGT_DIR_NAME)
 
 
 
@@ -56,9 +34,9 @@ def run_data_ingestion_function():
         BIGQUERY_DATASET_NAME = 'ReportsDataset'
 
         REPORTS = [
-            'Overall_Report_Reversals',
-            'Overall_Report_Multiswipes',
-            'Random_Forest_Validation_Set_predictions'
+            'Test_Report_Reversals',
+            'Test_Report_Multiswipes',
+            'Random_Forest_Test_Set_predictions'
         ]
 
         for report in REPORTS:
@@ -85,9 +63,9 @@ def run_data_ingestion_function():
 
 with dag:
 
-    train_pipeline_task = PythonVirtualenvOperator(   
-        task_id = 'train_pipeline_task',
-        python_callable = run_train_function,
+    prediction_pipeline_task = PythonVirtualenvOperator(   
+        task_id = 'prediction_pipeline_task',
+        python_callable = run_predict_function,
         requirements = [
             'scikit-learn==1.0.2', 
             'google-cloud-storage', 
@@ -114,4 +92,4 @@ with dag:
         system_site_packages = False,
     )
 
-train_pipeline_task >> data_ingestion_task
+prediction_pipeline_task >> data_ingestion_task

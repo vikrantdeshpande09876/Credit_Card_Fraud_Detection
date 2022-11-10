@@ -35,11 +35,11 @@ def run_train_pipeline(SRC_DIR_NAME, TGT_FILE_NAME, MODEL_PATH, PARAM_GRID, TGT_
 
     # Fetch the report of reversal-transactions
     report_reversals_df = get_reversals_report(main_df)
-    report_reversals_df.to_csv(f'{TGT_DIR_NAME}/Report_Reversals.csv', index=False)
+    report_reversals_df.to_csv(f'{TGT_DIR_NAME}Overall_Report_Reversals.csv', index=False)
 
     # Fetch the report of multiswipe-transactions
     multiswipes_df = get_multiswipe_transactions(main_df)
-    multiswipes_df.to_csv(f'{TGT_DIR_NAME}/Report_Multiswipes.csv', index=False)
+    multiswipes_df.to_csv(f'{TGT_DIR_NAME}Overall_Report_Multiswipes.csv', index=False)
 
 
     # Log the class-imbalance within our current dataset
@@ -64,17 +64,18 @@ def run_train_pipeline(SRC_DIR_NAME, TGT_FILE_NAME, MODEL_PATH, PARAM_GRID, TGT_
     features = main_df[feature_cols]
     x_train, x_test, y_train, y_test = train_test_split(features, labels, test_size=0.1, stratify=labels)
 
-    print(f'x_train={x_train.info()}')
-    print(f'x_test={x_test.info()}')
-
-    print(f'y_train={y_train.info()}')
-    print(f'y_test={y_test.info()}')
-
     # Apply grid-search-cv for a random-forest-classifier and cache the model
     model = train_random_forest_classifier(x_train, y_train, param_grid=PARAM_GRID, model_path=MODEL_PATH)
 
     # Log out the metrics for current model
-    print_neat_metrics(expected=y_test, preds=model.predict(x_test))
+    predictions = model.predict(x_test)
+    print_neat_metrics(expected=y_test, preds=predictions)
+
+    # Create the final set of validation-set-predictions
+    validations_df = x_test.copy()
+    validations_df['predictions'] = predictions
+    validations_df['expected'] = y_train
+    validations_df.to_csv(f'{TGT_DIR_NAME}Random_Forest_Validation_Set_predictions.csv', index=False)
 
 
 
@@ -83,6 +84,7 @@ def run_train_pipeline(SRC_DIR_NAME, TGT_FILE_NAME, MODEL_PATH, PARAM_GRID, TGT_
 
 
 def run_prediction_pipeline(SRC_DIR_NAME, TGT_FILE_NAME, MODEL_PATH, TGT_DIR_NAME):
+    
     df = read_src_file_as_df(dir_name=SRC_DIR_NAME, src_filename=TGT_FILE_NAME, verbose=True)
     print(f'Successfully read the remote text file and created a dataframe of shape df={df.shape}')
 
@@ -109,11 +111,11 @@ def run_prediction_pipeline(SRC_DIR_NAME, TGT_FILE_NAME, MODEL_PATH, TGT_DIR_NAM
 
     # Fetch the report of reversal-transactions
     report_reversals_df = get_reversals_report(main_df)
-    report_reversals_df.to_csv(f'{TGT_DIR_NAME}/Test_Report_Reversals.csv', index=False)
+    report_reversals_df.to_csv(f'{TGT_DIR_NAME}Test_Report_Reversals.csv', index=False)
 
     # Fetch the report of multiswipe-transactions
     multiswipes_df = get_multiswipe_transactions(main_df)
-    multiswipes_df.to_csv(f'{TGT_DIR_NAME}/Test_Report_Multiswipes.csv', index=False)
+    multiswipes_df.to_csv(f'{TGT_DIR_NAME}Test_Report_Multiswipes.csv', index=False)
 
 
     # Log the class-imbalance within our current dataset
@@ -140,4 +142,4 @@ def run_prediction_pipeline(SRC_DIR_NAME, TGT_FILE_NAME, MODEL_PATH, TGT_DIR_NAM
     test_features['predictions'] = predict_random_forest_classifier(test_features, model_path=MODEL_PATH)
     if 'isFraud' in main_df.columns:
         test_features['expected'] = main_df['isFraud']
-    test_features.to_csv(f'{TGT_DIR_NAME}/Random_Forest_predictions.csv', index=False)
+    test_features.to_csv(f'{TGT_DIR_NAME}Random_Forest_Test_Set_predictions.csv', index=False)

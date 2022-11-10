@@ -26,7 +26,11 @@ def read_src_file_as_df(dir_name, src_filename, verbose=True):
     #     print(f'lines={lines}')
     #     df = pd.read_json(f, lines=True)
     # df = pd.read_json(abs_srcfilename, lines=True)
-    df = pd.read_csv(abs_srcfilename)
+
+    try:
+        df = pd.read_csv(abs_srcfilename) if '.csv' in abs_srcfilename else pd.read_json(abs_srcfilename, lines=True)
+    except Exception as e:
+        print(f'Are you sure {abs_srcfilename} exists? {e}')
     if verbose:  print(df.info())
     
     return df
