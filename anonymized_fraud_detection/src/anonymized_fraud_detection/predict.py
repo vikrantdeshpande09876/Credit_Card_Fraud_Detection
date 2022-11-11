@@ -26,7 +26,7 @@ def run_prediction_pipeline(SRC_DIR_NAME, TGT_FILE_NAME, MODEL_PATH, TGT_DIR_NAM
 
     # Rather than just binary non-equality, check score of mismatch: a single digit wrong might be just a minor blunder
     df = df.astype({'cardCVV':'str', 'enteredCVV':'str'})
-    df['cvvMismatchScore'] = df.apply(lambda x : levenshtein_distance(x['enteredCVV'], x['enteredCVV']), axis=1)
+    df['cvvMismatchScore'] = df.apply(lambda x : levenshtein_distance(x['cardCVV'], x['enteredCVV']), axis=1)
 
 
     # Some basic cleansing/preprocessing logic

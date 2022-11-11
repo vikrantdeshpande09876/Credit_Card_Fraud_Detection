@@ -25,7 +25,7 @@ def run_train_pipeline(SRC_DIR_NAME, TGT_FILE_NAME, MODEL_PATH, PARAM_GRID, TGT_
 
     # Rather than just binary non-equality, check score of mismatch: a single digit wrong might be just a minor blunder
     df = df.astype({'cardCVV':'str', 'enteredCVV':'str'})
-    df['cvvMismatchScore'] = df.apply(lambda x : levenshtein_distance(x['enteredCVV'], x['enteredCVV']), axis=1)
+    df['cvvMismatchScore'] = df.apply(lambda x : levenshtein_distance(x['cardCVV'], x['enteredCVV']), axis=1)
 
 
     # Some basic cleansing/preprocessing logic
@@ -48,10 +48,10 @@ def run_train_pipeline(SRC_DIR_NAME, TGT_FILE_NAME, MODEL_PATH, PARAM_GRID, TGT_
     # Convert the boolean columns to integer-type
     main_df = convert_boolean_to_int(main_df, verbose=True)
 
-    # Apply Ordinal-Encoding to each of cat-column and keep track of the transformations
+    # Apply Ordinal-Encoding to each of categorical-column and keep track of the transformations
     main_df, categorical_cols_encoders = encode_categorical_cols(main_df, model_path=MODEL_PATH, verbose=True)
 
-    # Apply Scaling to each of cat-column and keep track of the transformations
+    # Apply Scaling to each of numerical-column and keep track of the transformations
     main_df, numerical_col_scalers = scaledown_numerical_cols(main_df, model_path=MODEL_PATH, verbose=True)
 
     # Drop off the irrelevant non-numerical columns now

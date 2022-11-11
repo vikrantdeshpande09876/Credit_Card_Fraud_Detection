@@ -20,13 +20,6 @@ def read_src_file_as_df(dir_name, src_filename, verbose=True):
     abs_srcfilename = dir_name + src_filename
     if verbose:  print(f'Trying to read {abs_srcfilename}')
     
-    # fs = gcsfs.GCSFileSystem(project='I535-Final-Project')
-    # with fs.open(abs_srcfilename) as f:
-    #     lines = f.readlines()
-    #     print(f'lines={lines}')
-    #     df = pd.read_json(f, lines=True)
-    # df = pd.read_json(abs_srcfilename, lines=True)
-
     try:
         df = pd.read_csv(abs_srcfilename) if '.csv' in abs_srcfilename else pd.read_json(abs_srcfilename, lines=True)
     except Exception as e:
@@ -322,8 +315,6 @@ def encode_categorical_cols(main_df, model_path=None, verbose=True):
     Returns:
         pd.DataFrame, dict: Final dataframe with ordinal encodings for categorical features, and the encoding-transformers used for each column.
     """
-    # categorical_cols = set(main_df.select_dtypes(include='object').columns)
-    # categorical_cols -= set(['transactionDateTime', 'accountOpenDate', 'dateOfLastAddressChange', 'currentExpDate'])
     categorical_cols = [
         'transactionType',
         'merchantCategoryCode',
@@ -335,10 +326,6 @@ def encode_categorical_cols(main_df, model_path=None, verbose=True):
     pickle_filename = 'categorical_cols_encoders.pickle'
     abs_model_path = model_path + pickle_filename
     categorical_cols_encoders = None
-
-    # if model_path and os.path.exists(abs_model_path):
-    #     if verbose:  print(f'Using the MinMaxScaler() objects available in the pickle file at: {abs_model_path}')
-    #     categorical_cols_encoders = joblib.load(abs_model_path)
     
     if model_path:
         categorical_cols_encoders = retrieve_cached_model(project_name='I535-Final-Project', tgt_abs_path=abs_model_path, verbose=True)
@@ -368,7 +355,6 @@ def encode_categorical_cols(main_df, model_path=None, verbose=True):
 
     if model_path:
         if verbose:  print(f'Caching the encoding-transformation objects at: {abs_model_path}...')
-        # joblib.dump(categorical_cols_encoders, abs_model_path)
         cache_pickle_object_to_gcs(categorical_cols_encoders, tgt_abs_path=abs_model_path)
 
     return main_df, categorical_cols_encoders
@@ -392,13 +378,6 @@ def scaledown_numerical_cols(main_df, numerical_cols=['creditLimit', 'availableM
         pd.DataFrame, dict: Final dataframe with ordinal encodings for categorical features, and the encoding-transformers used for each column.
     """
     abs_model_path = f'{model_path}/numerical_col_scalers.pickle'
-    
-    # if model_path and os.path.exists(abs_model_path):
-    #     if verbose:  print(f'Using the MinMaxScaler() objects available in the pickle file at: {abs_model_path}')
-    #     numerical_col_scalers = joblib.load(abs_model_path)
-    # else:
-    #     numerical_col_scalers = {c : None for c in numerical_cols}
-
 
     pickle_filename = 'numerical_col_scalers.pickle'
     abs_model_path = model_path + pickle_filename
@@ -420,7 +399,6 @@ def scaledown_numerical_cols(main_df, numerical_cols=['creditLimit', 'availableM
 
     if model_path and not os.path.exists(abs_model_path):
         if verbose:  print(f'Caching the scaling-transformation objects at: {abs_model_path}...')
-        # joblib.dump(numerical_col_scalers, abs_model_path)
         cache_pickle_object_to_gcs(numerical_col_scalers, tgt_abs_path=abs_model_path)
     return main_df, numerical_col_scalers
 
@@ -473,7 +451,6 @@ def train_random_forest_classifier(train_features, train_labels, param_grid, mod
     random_forest = RandomForestClassifier()
     cv_output = GridSearchCV(random_forest, param_grid=param_grid, cv=strat_kfold_cv, verbose=1).fit(train_features, train_labels)
     if model_path:
-        # joblib.dump(cv_output, f'{model_path}/random_forest_classifier.pickle')
         cache_pickle_object_to_gcs(cv_output, tgt_abs_path=abs_model_path)
     return cv_output
 
@@ -487,7 +464,6 @@ def predict_random_forest_classifier(test_features, model_path='models'):
         test_features (np.array): Numpy array of numerical test-features.
         model_path (str, optional): Path to read for retrieving the cached model. Defaults to 'models'.
     """
-    # new_random_forest = joblib.load(f'{model_path}/random_forest_classifier.pickle')
     model_picklefile = 'random_forest_classifier.pickle'
     abs_model_path = model_path + model_picklefile
     new_random_forest = retrieve_cached_model(tgt_abs_path=abs_model_path)
