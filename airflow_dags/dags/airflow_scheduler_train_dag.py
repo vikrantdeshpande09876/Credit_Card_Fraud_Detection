@@ -4,28 +4,15 @@ from airflow.operators.python import PythonVirtualenvOperator
 
 
 
-
-def dummy_function():
-    import sys, os
-    PATHS = sys.path
-    print(f'PATHS={PATHS}')
-    for root, dirs, files in os.walk(".", topdown=False):
-        for name in files:
-            print(os.path.join(root, name))
-        for name in dirs:
-            print(os.path.join(root, name))
-
-
-
 dag = DAG(dag_id='model_training_dag', default_args={'owner':'vikrant', 'retries':0, 'start_date':days_ago(1)}, schedule_interval=None, )
 
 
 def run_train_function():
         from anonymized_fraud_detection.train import run_train_pipeline
     
-        SRC_GCS_BUCKETNAME = 'gs://i535-credit-card-fraud-transactions-dir'
-        SRC_DIR_NAME = f'{SRC_GCS_BUCKETNAME}/Data/'
-        TGT_FILE_NAME = 'Train_transactions.txt'
+        SRC_GCS_BUCKETNAME = 'gs://i535-final-project-bucket'
+        SRC_DIR_NAME = f'{SRC_GCS_BUCKETNAME}/'
+        TGT_FILE_NAME = 'Train_transactions.csv'
         TGT_DIR_NAME = f'{SRC_GCS_BUCKETNAME}/outputs/'
         MODEL_PATH = f'{SRC_GCS_BUCKETNAME}/models/'
 
@@ -48,7 +35,7 @@ def run_data_ingestion_function():
         import pandas as pd
         from datetime import datetime
 
-        SRC_GCS_BUCKETNAME = 'gs://i535-credit-card-fraud-transactions-dir'
+        SRC_GCS_BUCKETNAME = 'gs://i535-final-project-bucket'
         PROJECT_ID = 'i535-final-project-367821'
         TGT_DIR_NAME = f'{SRC_GCS_BUCKETNAME}/outputs/'
         BIGQUERY_DATASET_NAME = 'ReportsDataset'
@@ -81,17 +68,22 @@ def run_data_ingestion_function():
 
 def run_file_archival_task():
     import gcsfs
+    from datetime import datetime
 
-    SRC_GCS_BUCKETNAME = 'gs://i535-credit-card-fraud-transactions-dir'
+    SRC_GCS_BUCKETNAME = 'gs://i535-final-project-bucket'
     PROJECT_NAME = 'i535-Final-Project'
-    SRC_DIR_NAME = f'{SRC_GCS_BUCKETNAME}/Data/'
-    TGT_DIR_NAME = f'{SRC_GCS_BUCKETNAME}/Data/archive/'
+    SRC_DIR_NAME = f'{SRC_GCS_BUCKETNAME}/'
+    TGT_DIR_NAME = f'{SRC_GCS_BUCKETNAME}/archive/'
+    CURRENT_TS = datetime.now().strftime(format='%Y-%m-%d %H:%M:%S')
+    CURRENT_TS = CURRENT_TS.replace('-','').replace(' ','').replace(':','')
+
     fs = gcsfs.GCSFileSystem(project=PROJECT_NAME)
-    
-    FILE_NAMES = ['Train_transactions.txt']
-    for fname in FILE_NAMES:
-        abs_src_filename = f'{SRC_DIR_NAME}/{fname}'
-        abs_tgt_filename = f'{TGT_DIR_NAME}/{fname}'
+
+    FILE_NAMES = ['Train_transactions']
+    FILE_FORMATS = ['csv']
+    for fname, format in zip(FILE_NAMES, FILE_FORMATS):
+        abs_src_filename = f'{SRC_DIR_NAME}{fname}.{format}'
+        abs_tgt_filename = f'{TGT_DIR_NAME}{fname}_{CURRENT_TS}.{format}'
         try:
             fs.mv(abs_src_filename, abs_tgt_filename)
         except Exception as e:

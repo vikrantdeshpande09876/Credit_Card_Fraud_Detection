@@ -12,9 +12,9 @@ def run_predict_function():
         from anonymized_fraud_detection.predict import run_prediction_pipeline
         print(f'Attempting to create a virtual-env')
     
-        SRC_GCS_BUCKETNAME = 'gs://i535-credit-card-fraud-transactions-dir'
-        SRC_DIR_NAME = f'{SRC_GCS_BUCKETNAME}/Data/'
-        TGT_FILE_NAME = 'Test_transactions.txt'
+        SRC_GCS_BUCKETNAME = 'gs://i535-final-project-bucket'
+        SRC_DIR_NAME = f'{SRC_GCS_BUCKETNAME}/'
+        TGT_FILE_NAME = 'Test_transactions.csv'
         TGT_DIR_NAME = f'{SRC_GCS_BUCKETNAME}/outputs/'
         MODEL_PATH = f'{SRC_GCS_BUCKETNAME}/models/'
 
@@ -28,7 +28,7 @@ def run_data_ingestion_function():
         from datetime import datetime
         print(f'Attempting to create a virtual-env')
 
-        SRC_GCS_BUCKETNAME = 'gs://i535-credit-card-fraud-transactions-dir'
+        SRC_GCS_BUCKETNAME = 'gs://i535-final-project-bucket'
         PROJECT_ID = 'i535-final-project-367821'
         TGT_DIR_NAME = f'{SRC_GCS_BUCKETNAME}/outputs/'
         BIGQUERY_DATASET_NAME = 'ReportsDataset'
@@ -38,12 +38,12 @@ def run_data_ingestion_function():
             'Test_Report_Multiswipes',
             'Random_Forest_Test_Set_predictions'
         ]
+        CURRENT_TS = datetime.now().strftime(format='%Y-%m-%d %H:%M:%S')
 
         for report in REPORTS:
             try:
                 df = pd.read_csv(f'{TGT_DIR_NAME}{report}.csv')
-                current_ts = datetime.now().strftime(format='%Y-%m-%d %H:%M:%S')
-                df['src_date'] = current_ts
+                df['src_date'] = CURRENT_TS
                 print(f'Pushing {TGT_DIR_NAME}{report}.csv into Google Big Table dataset.')
                 df.to_gbq(
                     destination_table=f'{BIGQUERY_DATASET_NAME}.{report}', 
@@ -59,17 +59,23 @@ def run_data_ingestion_function():
 
 def run_file_archival_task():
     import gcsfs
+    from datetime import datetime
 
-    SRC_GCS_BUCKETNAME = 'gs://i535-credit-card-fraud-transactions-dir'
+    SRC_GCS_BUCKETNAME = 'gs://i535-final-project-bucket'
     PROJECT_NAME = 'i535-Final-Project'
-    SRC_DIR_NAME = f'{SRC_GCS_BUCKETNAME}/Data/'
-    TGT_DIR_NAME = f'{SRC_GCS_BUCKETNAME}/Data/archive/'
+    SRC_DIR_NAME = f'{SRC_GCS_BUCKETNAME}/'
+    TGT_DIR_NAME = f'{SRC_GCS_BUCKETNAME}/archive/'
+    CURRENT_TS = datetime.now().strftime(format='%Y-%m-%d %H:%M:%S')
+    CURRENT_TS = CURRENT_TS.replace('-','').replace(' ','').replace(':','')
+
     fs = gcsfs.GCSFileSystem(project=PROJECT_NAME)
     
-    FILE_NAMES = ['Test_transactions.txt']
-    for fname in FILE_NAMES:
-        abs_src_filename = f'{SRC_DIR_NAME}/{fname}'
-        abs_tgt_filename = f'{TGT_DIR_NAME}/{fname}'
+    FILE_NAMES = ['Test_transactions.csv']
+    FILE_FORMATS = ['csv']
+    for fname, format in zip(FILE_NAMES, FILE_FORMATS):
+        abs_src_filename = f'{SRC_DIR_NAME}{fname}.{format}'
+        abs_tgt_filename = f'{TGT_DIR_NAME}{fname}_{CURRENT_TS}.{format}'
+
         try:
             fs.mv(abs_src_filename, abs_tgt_filename)
         except Exception as e:
