@@ -12,7 +12,7 @@ def run_train_function():
     
         SRC_GCS_BUCKETNAME = 'gs://i535-final-project-bucket'
         SRC_DIR_NAME = f'{SRC_GCS_BUCKETNAME}/'
-        TGT_FILE_NAME = 'Train_transactions.csv'
+        SRC_FILE_NAME = 'Train_transactions.csv'
         TGT_DIR_NAME = f'{SRC_GCS_BUCKETNAME}/outputs/'
         MODEL_PATH = f'{SRC_GCS_BUCKETNAME}/models/'
 
@@ -26,8 +26,8 @@ def run_train_function():
             'class_weight' : [CLASS_WEIGHTS]
         }
 
-        print(SRC_DIR_NAME, TGT_FILE_NAME, MODEL_PATH, PARAM_GRID, TGT_DIR_NAME)
-        run_train_pipeline(SRC_DIR_NAME, TGT_FILE_NAME, MODEL_PATH, PARAM_GRID, TGT_DIR_NAME)
+        print(SRC_DIR_NAME, SRC_FILE_NAME, MODEL_PATH, PARAM_GRID, TGT_DIR_NAME)
+        run_train_pipeline(SRC_DIR_NAME, SRC_FILE_NAME, MODEL_PATH, PARAM_GRID, TGT_DIR_NAME)
 
 
 
@@ -106,7 +106,7 @@ with dag:
             'gcsfs',
             'fsspec',
             'matplotlib==3.5.1', 
-            'anonymized-fraud-detection==0.0.1'
+            'anonymized-fraud-detection==0.1.0'
             ],
         system_site_packages = False,
     )

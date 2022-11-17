@@ -14,12 +14,12 @@ def run_predict_function():
     
         SRC_GCS_BUCKETNAME = 'gs://i535-final-project-bucket'
         SRC_DIR_NAME = f'{SRC_GCS_BUCKETNAME}/'
-        TGT_FILE_NAME = 'Test_transactions.csv'
+        SRC_FILE_NAME = 'Test_transactions.csv'
         TGT_DIR_NAME = f'{SRC_GCS_BUCKETNAME}/outputs/'
         MODEL_PATH = f'{SRC_GCS_BUCKETNAME}/models/'
 
-        print(SRC_DIR_NAME, TGT_FILE_NAME, MODEL_PATH, TGT_DIR_NAME)
-        run_prediction_pipeline(SRC_DIR_NAME, TGT_FILE_NAME, MODEL_PATH, TGT_DIR_NAME)
+        print(SRC_DIR_NAME, SRC_FILE_NAME, MODEL_PATH, TGT_DIR_NAME)
+        run_prediction_pipeline(SRC_DIR_NAME, SRC_FILE_NAME, MODEL_PATH, TGT_DIR_NAME)
 
 
 
@@ -101,7 +101,7 @@ with dag:
             'gcsfs',
             'fsspec',
             'matplotlib==3.5.1', 
-            'anonymized-fraud-detection==0.0.1'
+            'anonymized-fraud-detection==0.1.0'
             ],
         system_site_packages = False,
     )
