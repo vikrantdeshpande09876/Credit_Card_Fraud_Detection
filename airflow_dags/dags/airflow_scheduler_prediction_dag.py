@@ -97,15 +97,14 @@ with dag:
         task_id = 'prediction_pipeline_task',
         python_callable = run_predict_function,
         requirements = [
-            # 'scikit-learn==1.0.2', 
-            'scikit-learn',
+            'scikit-learn==1.0.2', 
             'google-cloud-storage', 
             'pandas==1.4.2',
             'pandas-gbq',
             'gcsfs',
             'fsspec',
             'matplotlib==3.5.1', 
-            'anonymized-fraud-detection==0.1.1'
+            'anonymized-fraud-detection==0.1.3'
             ],
         system_site_packages = False,
     )

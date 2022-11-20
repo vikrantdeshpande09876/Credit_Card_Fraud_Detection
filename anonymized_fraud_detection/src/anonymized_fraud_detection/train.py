@@ -103,7 +103,7 @@ def run_train_pipeline(SRC_DIR_NAME, SRC_FILE_NAME, MODEL_PATH, PARAM_GRID, TGT_
     # Create the final set of validation-set-predictions
     validations_df = x_test.copy()
     validations_df['predictions'] = predictions
-    validations_df['expected'] = y_train.values
+    validations_df['expected'] = y_test.values
     
     TGT_FILENAME = f'{TGT_DIR_NAME}Random_Forest_Validation_Set_predictions.csv'
     validations_df.to_csv(TGT_FILENAME, index=False)

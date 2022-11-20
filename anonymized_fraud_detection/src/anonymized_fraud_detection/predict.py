@@ -90,7 +90,8 @@ def run_prediction_pipeline(SRC_DIR_NAME, SRC_FILE_NAME, MODEL_PATH, TGT_DIR_NAM
     test_features = main_df[feature_cols]
 
     # Create the final set of test-predictions
-    test_features['predictions'] = predict_random_forest_classifier(test_features, model_path=MODEL_PATH, project_name=PROJECT_NAME, use_gcs=USE_GCS, verbose=VERBOSE)
+    preds, model = predict_random_forest_classifier(test_features, model_path=MODEL_PATH, project_name=PROJECT_NAME, use_gcs=USE_GCS, verbose=VERBOSE)
+    test_features['predictions'] = preds
     if 'isFraud' in main_df.columns:
         test_features['expected'] = main_df['isFraud'].values
 

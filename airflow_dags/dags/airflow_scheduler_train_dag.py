@@ -109,7 +109,7 @@ with dag:
             'gcsfs',
             'fsspec',
             'matplotlib==3.5.1', 
-            'anonymized-fraud-detection==0.1.1'
+            'anonymized-fraud-detection==0.1.3'
             ],
         system_site_packages = False,
     )
