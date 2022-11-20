@@ -21,3 +21,10 @@ Configure an `EventArc` trigger with the following config:
 
 
 Set the entrypoint to be the `trigger_dag()` function in the `main.py` file.
+
+## Most importantly: Make sure your Cloud Composer v1 environment has this variable configured:
+
+`api.composer_auth_user_registration_role = Op`
+
+Had to spend an entire day debugging why my Cloud Function was not able to make a successful POST-request to the Airflow webserver.
+GCP Documentation on Cloud Composers isn't great.
