@@ -1,13 +1,14 @@
 import pandas as pd
 
 from sklearn.model_selection import train_test_split
-from anonymized_fraud_detection.utilities.util_functions import read_src_file_as_df, levenshtein_distance, add_time_dependent_features, drop_unary_columns, impute_transactionType
-from anonymized_fraud_detection.utilities.util_functions import get_reversals_report, get_multiswipe_transactions, display_class_imbalance, convert_boolean_to_int
-from anonymized_fraud_detection.utilities.util_functions import encode_categorical_cols, drop_irrelevant_columns, scaledown_numerical_cols, print_neat_metrics
-from anonymized_fraud_detection.utilities.util_functions import train_random_forest_classifier
+from anonymized_fraud_detection.utilities.util_functions import read_src_file_as_df, levenshtein_distance, add_time_dependent_features, drop_unary_columns
+from anonymized_fraud_detection.utilities.util_functions import impute_transactionType, convert_boolean_to_int, drop_irrelevant_columns
+from anonymized_fraud_detection.utilities.analytical_reporting_functions import get_reversals_report, get_multiswipe_transactions, get_random_forest_feature_importances
+from anonymized_fraud_detection.utilities.analytical_reporting_functions import display_class_imbalance, print_neat_metrics
+from anonymized_fraud_detection.utilities.models import encode_categorical_cols, scaledown_numerical_cols, train_random_forest_classifier
 
 
-def run_train_pipeline(SRC_DIR_NAME, SRC_FILE_NAME, MODEL_PATH, PARAM_GRID, TGT_DIR_NAME, VERBOSE=True):
+def run_train_pipeline(SRC_DIR_NAME, SRC_FILE_NAME, MODEL_PATH, PARAM_GRID, TGT_DIR_NAME, PROJECT_NAME=None, USE_GCS=True, VERBOSE=True):
     """Uses the following series of functions:
     ```python
         1. read_src_file_as_df()- The Airflow task reads the “Train/Test_transactions.csv” file from GCS, and converts it into a dataframe.
@@ -29,6 +30,8 @@ def run_train_pipeline(SRC_DIR_NAME, SRC_FILE_NAME, MODEL_PATH, PARAM_GRID, TGT_
         SRC_FILE_NAME (str): Source file name name
         MODEL_PATH (str): Directory/GCS-bucketname where models should be stored
         TGT_DIR_NAME (str): Directory/GCS-bucketname where reports should be stored
+        PROJECT_NAME (str, optional): Google Cloud Project-name. Defaults to None.
+        USE_GCS (bool, optional): Flag to configure access to GCP cloud storage and BigQuery. Defaults to True.
         VERBOSE (bool, optional): Flag to indicate logging in verbose mode. Defaults to True.
     """
     
@@ -72,10 +75,12 @@ def run_train_pipeline(SRC_DIR_NAME, SRC_FILE_NAME, MODEL_PATH, PARAM_GRID, TGT_
     main_df = convert_boolean_to_int(main_df, verbose=VERBOSE)
 
     # Apply Ordinal-Encoding to each of categorical-column and keep track of the transformations
-    main_df, categorical_cols_encoders = encode_categorical_cols(main_df, model_path=MODEL_PATH, verbose=VERBOSE)
+    categorical_cols = ['transactionType','merchantCategoryCode','merchantCountryCode','merchantName','acqCountry']
+    main_df, _ = encode_categorical_cols(main_df, categorical_cols=categorical_cols, model_path=MODEL_PATH, project_name=PROJECT_NAME, use_gcs=USE_GCS, verbose=VERBOSE)
 
     # Apply Scaling to each of numerical-column and keep track of the transformations
-    main_df, numerical_col_scalers = scaledown_numerical_cols(main_df, model_path=MODEL_PATH, verbose=VERBOSE)
+    numerical_cols = ['creditLimit', 'availableMoney']
+    main_df, _ = scaledown_numerical_cols(main_df, numerical_cols=numerical_cols, model_path=MODEL_PATH, project_name=PROJECT_NAME, use_gcs=USE_GCS, verbose=VERBOSE)
 
     # Drop off the irrelevant non-numerical columns now
     main_df = drop_irrelevant_columns(main_df)
@@ -88,10 +93,11 @@ def run_train_pipeline(SRC_DIR_NAME, SRC_FILE_NAME, MODEL_PATH, PARAM_GRID, TGT_
     x_train, x_test, y_train, y_test = train_test_split(features, labels, test_size=0.1, stratify=labels)
 
     # Apply grid-search-cv for a random-forest-classifier and cache the model
-    model = train_random_forest_classifier(x_train, y_train, param_grid=PARAM_GRID, model_path=MODEL_PATH)
+    model = train_random_forest_classifier(x_train, y_train, param_grid=PARAM_GRID, model_path=MODEL_PATH, project_name=PROJECT_NAME, use_gcs=USE_GCS, verbose=VERBOSE)
 
     # Log out the metrics for current model
     predictions = model.predict(x_test)
+    feature_importances_df = get_random_forest_feature_importances(model=model, feature_cols=features.columns)
     print_neat_metrics(expected=y_test, preds=predictions)
 
     # Create the final set of validation-set-predictions
@@ -102,3 +108,7 @@ def run_train_pipeline(SRC_DIR_NAME, SRC_FILE_NAME, MODEL_PATH, PARAM_GRID, TGT_
     TGT_FILENAME = f'{TGT_DIR_NAME}Random_Forest_Validation_Set_predictions.csv'
     validations_df.to_csv(TGT_FILENAME, index=False)
     print(f'Successfully wrote the final predictions file {TGT_FILENAME}')
+
+    TGT_FILENAME = f'{TGT_DIR_NAME}Random_Forest_feature_importances.csv'
+    feature_importances_df.to_csv(TGT_FILENAME, index=False)
+    print(f'Successfully wrote the feature-importances file {TGT_FILENAME}')

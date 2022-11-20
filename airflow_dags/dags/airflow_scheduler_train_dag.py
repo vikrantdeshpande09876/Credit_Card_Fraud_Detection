@@ -10,7 +10,10 @@ dag = DAG(dag_id='model_training_dag', default_args={'owner':'vikrant', 'retries
 def run_train_function():
         from anonymized_fraud_detection.train import run_train_pipeline
     
-        SRC_GCS_BUCKETNAME = 'gs://i535-final-project-bucket'
+        USE_GCS = True
+        PROJECT_NAME = 'I535-Final-Project' if USE_GCS else None
+        SRC_GCS_BUCKETNAME = 'gs://i535-course-project-bucket' if USE_GCS else ''
+
         SRC_DIR_NAME = f'{SRC_GCS_BUCKETNAME}/'
         SRC_FILE_NAME = 'Train_transactions.csv'
         TGT_DIR_NAME = f'{SRC_GCS_BUCKETNAME}/outputs/'
@@ -27,7 +30,7 @@ def run_train_function():
         }
 
         print(SRC_DIR_NAME, SRC_FILE_NAME, MODEL_PATH, PARAM_GRID, TGT_DIR_NAME)
-        run_train_pipeline(SRC_DIR_NAME, SRC_FILE_NAME, MODEL_PATH, PARAM_GRID, TGT_DIR_NAME)
+        run_train_pipeline(SRC_DIR_NAME, SRC_FILE_NAME, MODEL_PATH, PARAM_GRID, TGT_DIR_NAME, PROJECT_NAME=PROJECT_NAME, USE_GCS=USE_GCS)
 
 
 
@@ -35,7 +38,7 @@ def run_data_ingestion_function():
         import pandas as pd
         from datetime import datetime
 
-        SRC_GCS_BUCKETNAME = 'gs://i535-final-project-bucket'
+        SRC_GCS_BUCKETNAME = 'gs://i535-course-project-bucket'
         PROJECT_ID = 'i535-final-project-367821'
         TGT_DIR_NAME = f'{SRC_GCS_BUCKETNAME}/outputs/'
         BIGQUERY_DATASET_NAME = 'ReportsDataset'
@@ -70,7 +73,7 @@ def run_file_archival_task():
     import gcsfs
     from datetime import datetime
 
-    SRC_GCS_BUCKETNAME = 'gs://i535-final-project-bucket'
+    SRC_GCS_BUCKETNAME = 'gs://i535-course-project-bucket'
     PROJECT_NAME = 'i535-Final-Project'
     SRC_DIR_NAME = f'{SRC_GCS_BUCKETNAME}/'
     TGT_DIR_NAME = f'{SRC_GCS_BUCKETNAME}/archive/'
@@ -106,7 +109,7 @@ with dag:
             'gcsfs',
             'fsspec',
             'matplotlib==3.5.1', 
-            'anonymized-fraud-detection==0.1.0'
+            'anonymized-fraud-detection==0.1.1'
             ],
         system_site_packages = False,
     )

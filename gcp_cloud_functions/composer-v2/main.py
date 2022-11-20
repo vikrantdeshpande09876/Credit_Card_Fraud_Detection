@@ -41,9 +41,11 @@ def trigger_dag_gcf(data, context=None):
     #  --location=your-composer-region \
     #  --format="value(config.airflowUri)"
     web_server_url = (
-        "https://a91bb61eed044a3897cb3d36643ec15e-dot-us-central1.composer.googleusercontent.com"
+        # "https://a91bb61eed044a3897cb3d36643ec15e-dot-us-central1.composer.googleusercontent.com"
+        "https://lc671f9a53c03e59cp-tp.appspot.com"
     )
     # Replace with the ID of the DAG that you want to run.
-    dag_id = 'model_prediction_dag'
+    dag_id = 'model_training_dag'
+    # dag_id = 'model_prediction_dag'
 
     composer2_airflow_rest_api.trigger_dag(web_server_url, dag_id, data)

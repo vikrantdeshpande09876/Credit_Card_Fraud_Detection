@@ -1,14 +1,12 @@
 import pandas as pd
 
-from anonymized_fraud_detection.utilities.util_functions import read_src_file_as_df, levenshtein_distance, add_time_dependent_features, drop_unary_columns, impute_transactionType
-from anonymized_fraud_detection.utilities.util_functions import get_reversals_report, get_multiswipe_transactions, display_class_imbalance, convert_boolean_to_int
-from anonymized_fraud_detection.utilities.util_functions import encode_categorical_cols, drop_irrelevant_columns, scaledown_numerical_cols, print_neat_metrics
-from anonymized_fraud_detection.utilities.util_functions import predict_random_forest_classifier
+from anonymized_fraud_detection.utilities.util_functions import read_src_file_as_df, levenshtein_distance, add_time_dependent_features, drop_unary_columns
+from anonymized_fraud_detection.utilities.util_functions import impute_transactionType, convert_boolean_to_int, drop_irrelevant_columns
+from anonymized_fraud_detection.utilities.analytical_reporting_functions import get_reversals_report, get_multiswipe_transactions, display_class_imbalance
+from anonymized_fraud_detection.utilities.models import encode_categorical_cols, scaledown_numerical_cols, predict_random_forest_classifier
 
 
-
-
-def run_prediction_pipeline(SRC_DIR_NAME, SRC_FILE_NAME, MODEL_PATH, TGT_DIR_NAME, VERBOSE=True):
+def run_prediction_pipeline(SRC_DIR_NAME, SRC_FILE_NAME, MODEL_PATH, TGT_DIR_NAME, PROJECT_NAME=None, USE_GCS=True, VERBOSE=True):
     """Uses the following series of functions:
     ```python
         1. read_src_file_as_df()- The Airflow task reads the “Train/Test_transactions.csv” file from GCS, and converts it into a dataframe.
@@ -30,6 +28,8 @@ def run_prediction_pipeline(SRC_DIR_NAME, SRC_FILE_NAME, MODEL_PATH, TGT_DIR_NAM
         SRC_FILE_NAME (str): Source file name name
         MODEL_PATH (str): Directory/GCS-bucketname where models should be stored
         TGT_DIR_NAME (str): Directory/GCS-bucketname where reports should be stored
+        PROJECT_NAME (str, optional): Google Cloud Project-name. Defaults to None.
+        USE_GCS (bool, optional): Flag to configure access to GCP cloud storage and BigQuery. Defaults to True.
         VERBOSE (bool, optional): Flag to indicate logging in verbose mode. Defaults to True.
     """
     
@@ -39,6 +39,7 @@ def run_prediction_pipeline(SRC_DIR_NAME, SRC_FILE_NAME, MODEL_PATH, TGT_DIR_NAM
     # Engineer date-time features from the input datetime column and drop the original column
     df['transactionDt'] = pd.to_datetime(df['transactionDateTime'])
     df = add_time_dependent_features(df, 'transactionDt', True)
+
 
     df['accountOpenDt'] = pd.to_datetime(df['accountOpenDate'])
     df = add_time_dependent_features(df, 'accountOpenDt')
@@ -72,11 +73,13 @@ def run_prediction_pipeline(SRC_DIR_NAME, SRC_FILE_NAME, MODEL_PATH, TGT_DIR_NAM
     # Convert the boolean columns to integer-type
     main_df = convert_boolean_to_int(main_df, verbose=VERBOSE)
 
-    # Apply Ordinal-Encoding to each of cat-column and keep track of the transformations
-    main_df, categorical_cols_encoders = encode_categorical_cols(main_df, model_path=MODEL_PATH, verbose=VERBOSE)
+    # Apply Ordinal-Encoding to each of categorical-column and keep track of the transformations
+    categorical_cols = ['transactionType','merchantCategoryCode','merchantCountryCode','merchantName','acqCountry']
+    main_df, _ = encode_categorical_cols(main_df, categorical_cols=categorical_cols, model_path=MODEL_PATH, project_name=PROJECT_NAME, use_gcs=USE_GCS, verbose=VERBOSE)
 
-    # Apply Scaling to each of cat-column and keep track of the transformations
-    main_df, numerical_col_scalers = scaledown_numerical_cols(main_df, model_path=MODEL_PATH, verbose=VERBOSE)
+    # Apply Scaling to each of numerical-column and keep track of the transformations
+    numerical_cols = ['creditLimit', 'availableMoney']
+    main_df, _ = scaledown_numerical_cols(main_df, numerical_cols=numerical_cols, model_path=MODEL_PATH, project_name=PROJECT_NAME, use_gcs=USE_GCS, verbose=VERBOSE)
 
     # Drop off the irrelevant non-numerical columns now
     main_df = drop_irrelevant_columns(main_df)
@@ -87,7 +90,7 @@ def run_prediction_pipeline(SRC_DIR_NAME, SRC_FILE_NAME, MODEL_PATH, TGT_DIR_NAM
     test_features = main_df[feature_cols]
 
     # Create the final set of test-predictions
-    test_features['predictions'] = predict_random_forest_classifier(test_features, model_path=MODEL_PATH)
+    test_features['predictions'] = predict_random_forest_classifier(test_features, model_path=MODEL_PATH, project_name=PROJECT_NAME, use_gcs=USE_GCS, verbose=VERBOSE)
     if 'isFraud' in main_df.columns:
         test_features['expected'] = main_df['isFraud'].values
 
